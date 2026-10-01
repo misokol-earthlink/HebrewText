@@ -185,10 +185,33 @@
 
 
  .textTitle {
- display: flex;
-  margin-left: 250px;
-  width: 500 px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-left: 250px;
+    width: fit-content;
+    font-family: Arial, sans-serif;
 }
+.textTitle p { margin: 1em 0; white-space: nowrap; }
+.initialize-controls { display:flex; align-items:center; gap:14px; white-space:nowrap; }
+.initialize-label { font-weight:bold; }
+.initialize-button { min-width:105px; }
+#lineFileInput { display:none; }
+#lineSelectModal {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.35);
+    z-index:2000; align-items:center; justify-content:center;
+}
+#lineSelectModal .line-select-dialog {
+    width:min(900px,90vw); background:white; border:2px solid darkblue;
+    padding:18px; box-sizing:border-box; font-family:Arial,sans-serif;
+}
+#lineSelectModal .line-select-title { font-size:20px; font-weight:bold; margin-bottom:12px; }
+#lineSelectModal select {
+    width:100%; height:auto; min-height:44px; font-family:"Times New Roman";
+    font-size:22px; font-weight:normal; border:1px solid #777; background:white;
+}
+#lineSelectModal .line-select-actions { margin-top:14px; text-align:right; }
+#lineSelectModal .line-select-close { background:red; }
         .popup {
             position: fixed;
             top: 50%;
@@ -659,6 +682,12 @@ button {
 </div>
 <div class="textTitle">
     <p>CREATE & EDIT TEXT LINE HERE</p>
+    <div class="initialize-controls">
+        <span class="initialize-label">Initialize from:</span>
+        <button type="button" class="initialize-button" onclick="chooseTextFile()">Text File</button>
+        <button type="button" class="initialize-button" onclick="lyricsJsonNotImplemented()">Lyrics JSON File</button>
+        <input type="file" id="lineFileInput" accept=".txt,text/plain" onchange="readSelectedTextFile(event)">
+    </div>
 </div>
 <div class="textContainer">
     <div contenteditable="true" class="main_text" id="main_textID"></div>
@@ -746,6 +775,17 @@ button {
         <span class="popupClose">✖</span>
     </div>
     <div class="popupGrid yodVowelGrid"></div>
+</div>
+
+<!-- Text-file line selection popup -->
+<div id="lineSelectModal" role="dialog" aria-modal="true" aria-labelledby="lineSelectTitle">
+    <div class="line-select-dialog">
+        <div id="lineSelectTitle" class="line-select-title">Select a line to initialize the editor</div>
+        <select id="lineSelectList" size="12" onchange="loadSelectedTextLine()"></select>
+        <div class="line-select-actions">
+            <button type="button" class="line-select-close" onclick="closeLineSelectModal()">Close</button>
+        </div>
+    </div>
 </div>
 
     <script src="TextGenerator.js"></script>

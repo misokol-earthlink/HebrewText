@@ -60,6 +60,10 @@
         let lastLetterCode = "";
         let previousText = "";
         let recoveredText = "";
+         // Text-file initialization data. These remain in memory for this page session only.
+         let importedTextLines = [];
+         let originalInputText = "";
+         let selectedInputLine = "";
         let recoveredVavs = [];
         let answer = "";
          let basicLettersArray = [];
@@ -3013,6 +3017,182 @@ function xOver(action) {
 
     dummy = -1;
 }
+
+// -----------------------------------------------------------------------------
+// INITIALIZE MAIN TEXT FROM A PLAIN TEXT FILE
+// Expected nonblank line format:  01: Hebrew text
+// Only the first colon separates the line identifier from the Hebrew text.
+// -----------------------------------------------------------------------------
+function chooseTextFile() {
+    const fileInput = document.getElementById("lineFileInput");
+    if (!fileInput) return;
+    fileInput.value = "";
+    fileInput.click();
+}
+
+async function readSelectedTextFile(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    let fileText;
+    try {
+        fileText = await file.text();
+    } catch (error) {
+        await doModal("The selected text file could not be read.");
+        return;
+    }
+
+    const parsedLines = [];
+    fileText.split(/\r?\n/).forEach((rawLine) => {
+        if (rawLine.trim() === "") return;
+        const colonPosition = rawLine.indexOf(":");
+        if (colonPosition < 0) return;
+
+        const lineName = rawLine.slice(0, colonPosition).trim();
+        const hebrew = rawLine.slice(colonPosition + 1).trim();
+        if (hebrew === "") return;
+
+        parsedLines.push({ lineName, hebrew, original: rawLine });
+    });
+
+    if (parsedLines.length === 0) {
+        await doModal("No usable lines were found. Expected lines such as 01: Hebrew text");
+        return;
+    }
+
+    importedTextLines = parsedLines;
+    showLineSelectModal();
+}
+
+function showLineSelectModal() {
+    const modal = document.getElementById("lineSelectModal");
+    const list = document.getElementById("lineSelectList");
+    if (!modal || !list) return;
+
+    list.innerHTML = "";
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Select a line...";
+    placeholder.selected = true;
+    list.appendChild(placeholder);
+
+    importedTextLines.forEach((line, index) => {
+        const option = document.createElement("option");
+        option.value = String(index);
+        option.textContent = line.original;
+        list.appendChild(option);
+    });
+
+    modal.style.display = "flex";
+    list.focus();
+}
+
+function closeLineSelectModal() {
+    const modal = document.getElementById("lineSelectModal");
+    if (modal) modal.style.display = "none";
+}
+
+function loadSelectedTextLine() {
+    const list = document.getElementById("lineSelectList");
+    if (!list || list.value === "") {
+        closeLineSelectModal();
+        return;
+    }
+
+    const selectedLine = importedTextLines[Number(list.value)];
+    if (!selectedLine) {
+        closeLineSelectModal();
+        return;
+    }
+
+    originalInputText = selectedLine.hebrew;
+    selectedInputLine = selectedLine.original;
+    initializeMainTextFromSource(selectedLine.hebrew);
+    closeLineSelectModal();
+}
+
+function initializeMainTextFromSource(text) {
+    mainText.textContent = text;
+
+    // The file-selected line deliberately replaces any recovered browser value
+    // and becomes the new Reset/original baseline for this page session.
+    backupText = text;
+    savedEditText = text;
+    previousText = text;
+    lastCursorPosition = text.length;
+
+    activeYodVowel = false;
+    yodVowelOffset = 0;
+    dageshOffset = 0;
+    metegOffset = 0;
+    pendingMappiq = false;
+    hasMeteg = false;
+    hasDagesh = false;
+    hasTrope = false;
+    hasVowel = false;
+    hasVavHolam = false;
+    hasPunctuation = false;
+    hasSoffit = false;
+    isVavHolam = false;
+    lastLetterAdded = "";
+
+    if (text.length === 0) {
+        okLetters = [].concat(onlyBasicLetters);
+        return;
+    }
+
+    const lastCharacter = text[text.length - 1];
+    const lastCharacterType = classifyCharacter(lastCharacter);
+    lastLetterCode = lastCharacterType.letterCode;
+    if (lastLetterCode === "X") isVavHolam = true;
+
+    switch (lastLetterCode) {
+        case "L":
+            okLetters = [].concat(everyLetter);
+            break;
+        case "S":
+            okLetters = [].concat(punctuationArray);
+            break;
+        case "P":
+            switch (lastCharacterType.variable) {
+                case "sofPasuk":
+                case "period":
+                    okLetters = ["space"];
+                    break;
+                case "space":
+                case "maqaf":
+                case "pasek":
+                default:
+                    okLetters = [].concat(onlyBasicLetters);
+                    break;
+            }
+            break;
+        case "V":
+        case "X":
+            okLetters = [].concat(onlyBasicLetters);
+            okLetters = okLetters.concat(soffitLettersArray);
+            okLetters = okLetters.concat(tropeSymbolsArray);
+            okLetters = okLetters.concat(punctuationArray);
+            okLetters.push("meteg");
+            break;
+        case "T":
+            okLetters = [].concat(onlyBasicLetters);
+            okLetters = okLetters.concat(soffitLettersArray);
+            okLetters = okLetters.concat(punctuationArray);
+            break;
+        default:
+            okLetters = [].concat(onlyBasicLetters);
+            break;
+    }
+
+    xOver("text file initialization");
+}
+
+async function lyricsJsonNotImplemented() {
+    await doModal("Feature not implemented.");
+}
+
+
 async function resetAll() {
 
     // Nothing was recovered when the page loaded,
